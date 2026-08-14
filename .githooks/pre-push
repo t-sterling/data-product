@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+BASE=origin/develop
+
+if ! git rev-parse --verify "${BASE}^{commit}" >/dev/null 2>&1; then
+    echo "ERROR: '$BASE' is unavailable. Fetch develop before pushing:" >&2
+    echo "  git fetch origin develop" >&2
+    exit 1
+fi
+
+echo "Validating data-product versions ($BASE -> HEAD)..."
+if ! "$REPO_ROOT/scripts/validate-product-versions.sh" "$BASE" HEAD; then
+    echo "Push rejected. Update each changed product.yml version, commit it, and push again." >&2
+    exit 1
+fi

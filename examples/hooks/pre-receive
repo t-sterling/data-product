@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+HOOK_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+VALIDATOR=${PRODUCT_VERSION_VALIDATOR:-"$HOOK_DIR/../../scripts/validate-product-versions.sh"}
+ZERO=0000000000000000000000000000000000000000
+failed=0
+
+if [[ ! -x $VALIDATOR ]]; then
+    echo "ERROR: product version validator is not executable at '$VALIDATOR'." >&2
+    echo "Set PRODUCT_VERSION_VALIDATOR to its deployed server-side path." >&2
+    exit 1
+fi
+
+while read -r old_sha new_sha ref_name; do
+    [[ $ref_name == refs/heads/develop ]] || continue
+    if [[ $old_sha == "$ZERO" || $new_sha == "$ZERO" ]]; then
+        echo "ERROR: creating or deleting develop is outside this prototype hook's scope." >&2
+        failed=1
+        continue
+    fi
+    "$VALIDATOR" "$old_sha" "$new_sha" || failed=1
+done
+
+exit "$failed"
