@@ -52,7 +52,7 @@ invalid_structure() {
 }
 
 failures=0
-mapfile -t PRODUCTS < <("$SCRIPT_DIR/changed-products.sh" "$BASE" "$TARGET") || exit $?
+mapfile -t PRODUCTS < <(bash "$SCRIPT_DIR/changed-products.sh" "$BASE" "$TARGET") || exit $?
 
 for product in "${PRODUCTS[@]}"; do
     old_version=$(read_version "$BASE" "$product")

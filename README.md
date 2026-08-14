@@ -43,16 +43,16 @@ Each product module has Maven packaging type `pom`; it contains no Java applicat
 Requirements are Git, Bash, JDK 17 or later, and Maven.
 
 ```bash
-./tests/shell-tools-test.sh
-./tests/publish-artifacts-test.sh
-./tests/setup-aws-deployment-test.sh
-./scripts/build-changed-products.sh origin/main HEAD
+bash ./tests/shell-tools-test.sh
+bash ./tests/publish-artifacts-test.sh
+bash ./tests/setup-aws-deployment-test.sh
+bash ./scripts/build-changed-products.sh origin/main HEAD
 ```
 
 Install the local hook once after cloning:
 
 ```bash
-./scripts/install-hooks.sh
+bash ./scripts/install-hooks.sh
 ```
 
 This sets the repository-local `core.hooksPath` to `.githooks`; no manual copying into `.git/hooks` is needed. It also records `productVersions.baseRef`, preferring `origin/develop` and falling back to `origin/main` when that is the repository's integration branch. Override it explicitly when needed:
@@ -66,8 +66,8 @@ git config productVersions.baseRef origin/release
 `changed-products.sh` diffs two commits, keeps paths shaped like `data-products/<product>/...`, extracts the immediate child directory, and deduplicates the names:
 
 ```bash
-./scripts/changed-products.sh origin/main HEAD
-./scripts/validate-product-versions.sh origin/main HEAD
+bash ./scripts/changed-products.sh origin/main HEAD
+bash ./scripts/validate-product-versions.sh origin/main HEAD
 ```
 
 The validator reads both historical `product.yml` files directly with `git show`. It reports all affected invalid products it can, including unchanged versions, downgrades, invalid SemVer, missing fields, and duplicate fields. It never checks out or mutates either commit.
@@ -75,7 +75,7 @@ The validator reads both historical `product.yml` files directly with `git show`
 After a merge, CI can validate and build only affected reactor modules:
 
 ```bash
-./scripts/build-changed-products.sh <previous-main-sha> <new-main-sha>
+bash ./scripts/build-changed-products.sh <previous-main-sha> <new-main-sha>
 ```
 
 For every changed product, the script passes the authoritative `product.yml` version into Maven only as the ZIP filename, for example `mvn -pl data-products/orders -Dproduct.release.version=1.3.0 clean package`. It copies the resulting `orders-1.3.0.zip`, SHA-256 sidecar, and JSON release manifest into `target/data-product-artifacts/`.
@@ -130,6 +130,17 @@ s3://<bucket>/<prefix>/orders/1.3.0/orders-1.3.0.zip
 s3://<bucket>/<prefix>/orders/1.3.0/orders-1.3.0.zip.sha256
 s3://<bucket>/<prefix>/orders/1.3.0/orders-1.3.0.release.json
 ```
+
+If a merge publication fails before uploading, rerun that exact Git range after fixing CI:
+
+```bash
+gh workflow run publish-data-products.yml \
+  --ref main \
+  -f base-sha=<previous-main-sha> \
+  -f target-sha=<failed-merge-sha>
+```
+
+The manual trigger validates and publishes the same immutable source range; it does not require a fake product change or version increase.
 
 ## Developer workflow
 

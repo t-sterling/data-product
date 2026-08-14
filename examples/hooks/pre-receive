@@ -19,7 +19,7 @@ while read -r old_sha new_sha ref_name; do
         failed=1
         continue
     fi
-    "$VALIDATOR" "$old_sha" "$new_sha" || failed=1
+    bash "$VALIDATOR" "$old_sha" "$new_sha" || failed=1
 done
 
 exit "$failed"

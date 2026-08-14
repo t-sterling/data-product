@@ -8,8 +8,8 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 TARGET_COMMIT=$(git rev-parse "${TARGET}^{commit}")
 
-mapfile -t PRODUCTS < <("$SCRIPT_DIR/changed-products.sh" "$BASE" "$TARGET")
-"$SCRIPT_DIR/validate-product-versions.sh" "$BASE" "$TARGET"
+mapfile -t PRODUCTS < <(bash "$SCRIPT_DIR/changed-products.sh" "$BASE" "$TARGET")
+bash "$SCRIPT_DIR/validate-product-versions.sh" "$BASE" "$TARGET"
 
 if [[ ${#PRODUCTS[@]} -eq 0 ]]; then
     echo "No changed data-products; nothing to build."

@@ -13,7 +13,7 @@ if ! git rev-parse --verify "${BASE}^{commit}" >/dev/null 2>&1; then
 fi
 
 echo "Validating data-product versions ($BASE -> HEAD)..."
-if ! "$REPO_ROOT/scripts/validate-product-versions.sh" "$BASE" HEAD; then
+if ! bash "$REPO_ROOT/scripts/validate-product-versions.sh" "$BASE" HEAD; then
     echo "Push rejected. Update each changed product.yml version, commit it, and push again." >&2
     exit 1
 fi

@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      base-sha:
+        description: Commit before the product changes
+        required: true
+        type: string
+      target-sha:
+        description: Commit containing the releases (defaults to selected ref)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -44,11 +54,33 @@ jobs:
           test -n "$AWS_ROLE_ARN" || { echo "Missing GitHub variable AWS_ROLE_ARN" >&2; exit 1; }
           test -n "$DATA_PRODUCT_BUCKET" || { echo "Missing GitHub variable DATA_PRODUCT_BUCKET" >&2; exit 1; }
 
+      - name: Resolve comparison commits
+        id: revisions
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BASE: ${{ github.event.before }}
+          DISPATCH_BASE: ${{ inputs.base-sha }}
+          DISPATCH_TARGET: ${{ inputs.target-sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            base="$PUSH_BASE"
+            target="${{ github.sha }}"
+          else
+            base="$DISPATCH_BASE"
+            target="${DISPATCH_TARGET:-${{ github.sha }}}"
+          fi
+          git rev-parse --verify "${base}^{commit}" >/dev/null
+          git rev-parse --verify "${target}^{commit}" >/dev/null
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "Comparing $base -> $target"
+
       - name: Detect changed data-products
         id: changes
         shell: bash
         run: |
-          products=$(./scripts/changed-products.sh "${{ github.event.before }}" "${{ github.sha }}")
+          products=$(bash ./scripts/changed-products.sh "${{ steps.revisions.outputs.base }}" "${{ steps.revisions.outputs.target }}")
           if [[ -n "$products" ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             printf 'Changed data-products:\n%s\n' "$products"
@@ -60,7 +92,7 @@ jobs:
       - name: Build changed data-products
         if: steps.changes.outputs.changed == 'true'
         shell: bash
-        run: ./scripts/build-changed-products.sh "${{ github.event.before }}" "${{ github.sha }}"
+        run: bash ./scripts/build-changed-products.sh "${{ steps.revisions.outputs.base }}" "${{ steps.revisions.outputs.target }}"
 
       - name: Retain ZIPs as GitHub run artifacts
         if: steps.changes.outputs.changed == 'true'
@@ -82,4 +114,4 @@ jobs:
       - name: Publish immutable artifacts to S3
         if: steps.changes.outputs.changed == 'true'
         shell: bash
-        run: ./scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" "$DATA_PRODUCT_PREFIX"
+        run: bash ./scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" "$DATA_PRODUCT_PREFIX"
