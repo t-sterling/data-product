@@ -20,17 +20,19 @@ The invariant is simple: if files belonging to a data-product change between two
 |-- data-products/
 |   |-- orders/                     product.yml + config/schema/sql/meta
 |   `-- customers/                  product.yml + config/schema/sql/meta
-|-- src/assembly/data-product.xml   Shared ZIP layout
-|-- .github/workflows/              Merge-to-main build and S3 publication
+|-- .github/
+|   |-- workflows/                 Candidate and release automation
+|   `-- scripts/                   Publication and GitOps CI helpers
 |-- scripts/
 |   |-- changed-products.sh
 |   |-- validate-product-versions.sh
 |   |-- build-changed-products.sh
-|   |-- publish-artifacts-to-s3.sh
-|   `-- install-hooks.sh
+|   |-- install-hooks.sh
+|   |-- assembly/                  Shared ZIP layout
+|   |-- infra/                     Repeatable AWS/GitHub provisioning
+|   `-- tests/                     Shell regression tests
 |-- .githooks/pre-push              Early local feedback
-|-- examples/hooks/pre-receive      Authoritative server example
-`-- tests/shell-tools-test.sh
+`-- README.md
 ```
 
 All Maven projects deliberately inherit the parent version `0.0.1-SNAPSHOT`. That coordinate is a build implementation detail, not a product's release identity. The authoritative identity is the top-level field in its metadata:
@@ -51,9 +53,10 @@ Each product module has Maven packaging type `pom`; it contains no Java applicat
 Requirements are Git, Bash, JDK 17 or later, and Maven.
 
 ```bash
-bash ./tests/shell-tools-test.sh
-bash ./tests/publish-artifacts-test.sh
-bash ./infra/tests/setup-aws-deployment-test.sh
+bash ./scripts/tests/shell-tools-test.sh
+bash ./scripts/tests/publish-artifacts-test.sh
+bash ./scripts/tests/dev-manifest-test.sh
+bash ./scripts/tests/setup-aws-deployment-test.sh
 bash ./scripts/build-changed-products.sh origin/main HEAD
 ```
 
@@ -97,13 +100,13 @@ For every changed product, the script passes the authoritative `product.yml` ver
 The setup command configures the complete publication infrastructure using the AWS and GitHub CLIs. It is idempotent and can be reused for another account, bucket, or repository:
 
 ```bash
-./infra/setup-aws-deployment.sh \
+./scripts/infra/setup-aws-deployment.sh \
   --bucket ts-data-products \
   --region us-east-1 \
   --github-repo t-sterling/dp-devops
 ```
 
-Authenticate first with the appropriate AWS identity and `gh auth login`. The caller needs permission to inspect the AWS account, configure the S3 bucket, manage the GitHub OIDC IAM provider and role, and administer the target GitHub repository environment. Run `./infra/setup-aws-deployment.sh --help` for optional role, prefix, environment, and AWS profile arguments.
+Authenticate first with the appropriate AWS identity and `gh auth login`. The caller needs permission to inspect the AWS account, configure the S3 bucket, manage the GitHub OIDC IAM provider and role, and administer the target GitHub repository environment. Run `./scripts/infra/setup-aws-deployment.sh --help` for optional role, prefix, environment, and AWS profile arguments.
 
 The command:
 

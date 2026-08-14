@@ -55,7 +55,7 @@ jobs:
 
       - name: Publish SHA-addressed candidates
         shell: bash
-        run: bash scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" candidate "$DATA_PRODUCT_PREFIX" "$GITHUB_SHA"
+        run: bash .github/scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" candidate "$DATA_PRODUCT_PREFIX" "$GITHUB_SHA"
 
       - name: Check out deployment desired state
         uses: actions/checkout@v6
@@ -67,7 +67,7 @@ jobs:
       - name: Update DEV to exact candidates
         shell: bash
         run: |
-          bash scripts/write-dev-manifests.sh target/data-product-artifacts _deployment candidate \
+          bash .github/scripts/write-dev-manifests.sh target/data-product-artifacts _deployment candidate \
             "s3://$DATA_PRODUCT_BUCKET/$DATA_PRODUCT_PREFIX"
           cd _deployment
           git config user.name data-product-release-bot

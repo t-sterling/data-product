@@ -103,7 +103,7 @@ jobs:
       - name: Require the merged content to have passed through DEV
         if: steps.changes.outputs.changed == 'true'
         shell: bash
-        run: bash ./scripts/validate-tested-candidates.sh "${{ steps.revisions.outputs.base }}" "${{ steps.revisions.outputs.target }}" _deployment
+        run: bash ./.github/scripts/validate-tested-candidates.sh "${{ steps.revisions.outputs.base }}" "${{ steps.revisions.outputs.target }}" _deployment
 
       - name: Build changed data-products
         if: steps.changes.outputs.changed == 'true'
@@ -130,13 +130,13 @@ jobs:
       - name: Publish immutable artifacts to S3
         if: steps.changes.outputs.changed == 'true'
         shell: bash
-        run: bash ./scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" release "$DATA_PRODUCT_PREFIX"
+        run: bash ./.github/scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" release "$DATA_PRODUCT_PREFIX"
 
       - name: Record releases as DEV desired state
         if: steps.changes.outputs.changed == 'true'
         shell: bash
         run: |
-          bash ./scripts/write-dev-manifests.sh target/data-product-artifacts _deployment release "s3://$DATA_PRODUCT_BUCKET/$DATA_PRODUCT_PREFIX"
+          bash ./.github/scripts/write-dev-manifests.sh target/data-product-artifacts _deployment release "s3://$DATA_PRODUCT_BUCKET/$DATA_PRODUCT_PREFIX"
           cd _deployment
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com

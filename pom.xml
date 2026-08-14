@@ -29,7 +29,7 @@
                     <version>${maven.assembly.version}</version>
                     <configuration>
                         <descriptors>
-                            <descriptor>${maven.multiModuleProjectDirectory}/src/assembly/data-product.xml</descriptor>
+                            <descriptor>${maven.multiModuleProjectDirectory}/scripts/assembly/data-product.xml</descriptor>
                         </descriptors>
                         <finalName>${project.artifactId}-${product.release.version}</finalName>
                         <appendAssemblyId>false</appendAssemblyId>
