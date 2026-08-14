@@ -45,6 +45,7 @@ Requirements are Git, Bash, JDK 17 or later, and Maven.
 ```bash
 ./tests/shell-tools-test.sh
 ./tests/publish-artifacts-test.sh
+./tests/setup-aws-deployment-test.sh
 ./scripts/build-changed-products.sh origin/main HEAD
 ```
 
@@ -82,6 +83,30 @@ For every changed product, the script passes the authoritative `product.yml` ver
 ## GitHub Actions and S3 publication
 
 `.github/workflows/publish-data-products.yml` runs after a commit reaches `main` (normally through a protected-branch PR merge). It checks out full history, compares the push event's before/after SHAs, validates and builds only changed products, retains the outputs as GitHub run artifacts, assumes an AWS role using GitHub OIDC, and conditionally creates immutable S3 objects. A documentation-only merge succeeds without attempting an upload.
+
+### Repeatable AWS and GitHub setup
+
+The setup command configures the complete publication infrastructure using the AWS and GitHub CLIs. It is idempotent and can be reused for another account, bucket, or repository:
+
+```bash
+./scripts/setup-aws-deployment.sh \
+  --bucket ts-data-products \
+  --region us-east-1 \
+  --github-repo t-sterling/dp-devops
+```
+
+Authenticate first with the appropriate AWS identity and `gh auth login`. The caller needs permission to inspect the AWS account, configure the S3 bucket, manage the GitHub OIDC IAM provider and role, and administer the target GitHub repository environment. Run `./scripts/setup-aws-deployment.sh --help` for optional role, prefix, environment, and AWS profile arguments.
+
+The command:
+
+1. creates the bucket when absent and verifies its region and owner;
+2. blocks public access, enforces bucket-owner ownership, enables versioning, and configures SSE-S3 encryption;
+3. creates the GitHub Actions OIDC provider when absent;
+4. creates or reconciles a least-privilege IAM publishing role;
+5. restricts role assumption to this repository's immutable GitHub ID and deployment environment;
+6. creates the GitHub environment and writes all required Actions variables.
+
+It deliberately does not enable S3 Object Lock because that setting has operational and deletion consequences. Publication immutability is enforced through conditional S3 writes, while bucket versioning protects against accidental changes made through other paths.
 
 Create the GitHub environment `data-product-production` and define these Actions variables at repository or environment scope:
 
