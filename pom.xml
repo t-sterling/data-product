@@ -15,29 +15,35 @@
     </modules>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.11.4</junit.version>
+        <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
+        <maven.assembly.version>3.8.0</maven.assembly.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.5.2</version>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${maven.assembly.version}</version>
+                    <configuration>
+                        <descriptors>
+                            <descriptor>${maven.multiModuleProjectDirectory}/src/assembly/data-product.xml</descriptor>
+                        </descriptors>
+                        <finalName>${project.artifactId}-${product.release.version}</finalName>
+                        <appendAssemblyId>false</appendAssemblyId>
+                        <outputTimestamp>${project.build.outputTimestamp}</outputTimestamp>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>assemble-data-product</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>single</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

@@ -2,11 +2,13 @@
 set -euo pipefail
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-BASE=origin/develop
+BASE=$(git config --get productVersions.baseRef || true)
+BASE=${BASE:-origin/develop}
 
 if ! git rev-parse --verify "${BASE}^{commit}" >/dev/null 2>&1; then
-    echo "ERROR: '$BASE' is unavailable. Fetch develop before pushing:" >&2
-    echo "  git fetch origin develop" >&2
+    echo "ERROR: configured base ref '$BASE' is unavailable." >&2
+    echo "Fetch it, or configure the correct integration branch:" >&2
+    echo "  git config productVersions.baseRef origin/main" >&2
     exit 1
 fi
 

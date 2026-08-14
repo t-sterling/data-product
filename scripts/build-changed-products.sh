@@ -6,6 +6,7 @@ BASE=$1
 TARGET=$2
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(git rev-parse --show-toplevel)
+TARGET_COMMIT=$(git rev-parse "${TARGET}^{commit}")
 
 mapfile -t PRODUCTS < <("$SCRIPT_DIR/changed-products.sh" "$BASE" "$TARGET")
 "$SCRIPT_DIR/validate-product-versions.sh" "$BASE" "$TARGET"
@@ -17,6 +18,9 @@ fi
 
 declare -a MODULES=()
 declare -a VERSIONS=()
+ARTIFACT_DIR="$REPO_ROOT/target/data-product-artifacts"
+rm -rf "$ARTIFACT_DIR"
+mkdir -p "$ARTIFACT_DIR"
 printf '\nChanged data-products:\n\n'
 for product in "${PRODUCTS[@]}"; do
     old_version=$(git show "$BASE:data-products/$product/product.yml" | sed -n 's/^version:[[:space:]]*//p')
@@ -27,11 +31,31 @@ for product in "${PRODUCTS[@]}"; do
 done
 
 printf '\nBuilding:\n'
-printf '  %s\n' "${MODULES[@]}"
-module_list=$(IFS=,; echo "${MODULES[*]}")
-(cd "$REPO_ROOT" && mvn -pl "$module_list" -am clean verify)
-
-printf '\nWould publish:\n'
 for index in "${!PRODUCTS[@]}"; do
-    printf '  %s:%s\n' "${PRODUCTS[$index]}" "${VERSIONS[$index]}"
+    product=${PRODUCTS[$index]}
+    version=${VERSIONS[$index]}
+    module=${MODULES[$index]}
+    printf '  %s\n' "$module"
+    (cd "$REPO_ROOT" && mvn -pl "$module" -Dproduct.release.version="$version" clean package)
+
+    zip="$REPO_ROOT/$module/target/$product-$version.zip"
+    [[ -f $zip ]] || { echo "ERROR: expected build output '$zip' was not created." >&2; exit 1; }
+    cp "$zip" "$ARTIFACT_DIR/"
+    (cd "$ARTIFACT_DIR" && sha256sum "$product-$version.zip" > "$product-$version.zip.sha256")
+    checksum=$(awk '{ print $1 }' "$ARTIFACT_DIR/$product-$version.zip.sha256")
+    cat > "$ARTIFACT_DIR/$product-$version.release.json" <<JSON
+{
+  "product": "$product",
+  "version": "$version",
+  "gitCommit": "$TARGET_COMMIT",
+  "file": "$product-$version.zip",
+  "sha256": "$checksum"
+}
+JSON
+done
+
+printf '\nCreated artifacts:\n'
+for index in "${!PRODUCTS[@]}"; do
+    printf '  %s:%s -> target/data-product-artifacts/%s-%s.zip\n' \
+        "${PRODUCTS[$index]}" "${VERSIONS[$index]}" "${PRODUCTS[$index]}" "${VERSIONS[$index]}"
 done
