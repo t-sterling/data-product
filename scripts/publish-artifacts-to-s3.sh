@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-[[ $# -ge 2 && $# -le 3 ]] || {
-    echo "Usage: $0 <artifact-directory> <bucket> [key-prefix]" >&2
+[[ $# -ge 3 && $# -le 5 ]] || {
+    echo "Usage: $0 <artifact-directory> <bucket> <candidate|release> [key-prefix] [git-sha]" >&2
     exit 2
 }
 
 ARTIFACT_DIR=$1
 BUCKET=$2
-PREFIX=${3:-data-products}
+CHANNEL=$3
+PREFIX=${4:-data-products}
+GIT_SHA=${5:-}
+
+[[ $CHANNEL == candidate || $CHANNEL == release ]] || { echo "ERROR: channel must be candidate or release." >&2; exit 2; }
+if [[ $CHANNEL == candidate && -z $GIT_SHA ]]; then
+    echo 'ERROR: candidate publication requires a Git SHA.' >&2
+    exit 2
+fi
 
 [[ -d $ARTIFACT_DIR ]] || { echo "ERROR: artifact directory '$ARTIFACT_DIR' does not exist." >&2; exit 2; }
 command -v aws >/dev/null 2>&1 || { echo "ERROR: AWS CLI is required." >&2; exit 2; }
@@ -22,7 +30,12 @@ for zip in "${zips[@]}"; do
     identity=${filename%.zip}
     version=${identity##*-}
     product=${identity%-$version}
-    key="$PREFIX/$product/$version/$filename"
+    if [[ $CHANNEL == candidate ]]; then
+        key_root="$PREFIX/candidates/$product/$version/$GIT_SHA"
+    else
+        key_root="$PREFIX/releases/$product/$version"
+    fi
+    key="$key_root/$filename"
 
     echo "Publishing s3://$BUCKET/$key"
     aws s3api put-object \
@@ -33,11 +46,11 @@ for zip in "${zips[@]}"; do
         --metadata "product=$product,version=$version" \
         --if-none-match '*'
 
-    for sidecar in "$ARTIFACT_DIR/$identity.zip.sha256" "$ARTIFACT_DIR/$identity.release.json"; do
+    for sidecar in "$ARTIFACT_DIR/$identity.zip.sha256" "$ARTIFACT_DIR/$identity.artifact.json"; do
         sidecar_name=$(basename "$sidecar")
         aws s3api put-object \
             --bucket "$BUCKET" \
-            --key "$PREFIX/$product/$version/$sidecar_name" \
+            --key "$key_root/$sidecar_name" \
             --body "$sidecar" \
             --if-none-match '*'
     done

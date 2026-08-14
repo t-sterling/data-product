@@ -1,5 +1,13 @@
 # Git-Native Data-Product Versioning Prototype
 
+## Candidate-to-release GitOps lifecycle
+
+Feature-branch pushes that touch `data-products/**` build only the changed products, publish immutable candidate ZIPs under `candidates/<product>/<version>/<git-sha>/`, and update the corresponding DEV manifest in a separate `data-product-deployments` repository. That Git commit is the automatic DEV deployment trigger. A later successful feature push for the same product replaces its shared DEV desired state; no `latest` object or alias is used.
+
+After DEV validation, the unchanged content is merged to `main`. The release workflow proves each merged product tree has the same content digest as its recorded DEV candidate, publishes it under `releases/<product>/<version>/`, and changes DEV desired state from `candidate` to `release`. Higher environments accept released artifacts only and are promoted through pull requests in the deployment repository.
+
+Configure the source repository variable `DEPLOYMENT_REPOSITORY` (for example `company/data-product-deployments`) and secret `DEPLOYMENT_REPO_TOKEN`, a fine-grained token with contents read/write access to that repository. The locally scaffolded `data-product-deployments/` directory is ignored by this repository and must be pushed as an independent repository owned by the deployment team.
+
 This repository demonstrates independently versioned data-products in one Maven monorepo. The repository is a shared source and build container, but **each directory immediately below `data-products/` is its own release unit**. For example, the same commit can describe `orders:2.3.1` and `customers:5.1.0`.
 
 The invariant is simple: if files belonging to a data-product change between two commits, that product's `product.yml` version must also change to a strictly greater numeric SemVer. Git commits, refs, diffs, and repository contents are the entire validation interface; no GitHub API or CI-provider feature is involved.

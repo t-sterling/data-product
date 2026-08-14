@@ -10,6 +10,7 @@ Usage:
     --bucket <bucket-name> \
     --region <aws-region> \
     --github-repo <owner/repository> \
+    [--deployment-repo <owner/repository>] \
     [--prefix <key-prefix>] \
     [--role-name <iam-role-name>] \
     [--environment <github-environment>] \
@@ -27,6 +28,7 @@ USAGE
 BUCKET=''
 REGION=''
 GITHUB_REPO=''
+DEPLOYMENT_REPO=''
 PREFIX='data-products'
 ROLE_NAME='data-product-github-publisher'
 ENVIRONMENT='data-product-production'
@@ -37,6 +39,7 @@ while [[ $# -gt 0 ]]; do
         --bucket) BUCKET=${2:-}; shift 2 ;;
         --region) REGION=${2:-}; shift 2 ;;
         --github-repo) GITHUB_REPO=${2:-}; shift 2 ;;
+        --deployment-repo) DEPLOYMENT_REPO=${2:-}; shift 2 ;;
         --prefix) PREFIX=${2:-}; shift 2 ;;
         --role-name) ROLE_NAME=${2:-}; shift 2 ;;
         --environment) ENVIRONMENT=${2:-}; shift 2 ;;
@@ -48,6 +51,7 @@ done
 
 [[ -n $BUCKET && -n $REGION && -n $GITHUB_REPO ]] || { usage >&2; exit 2; }
 [[ $GITHUB_REPO == */* ]] || { echo 'ERROR: --github-repo must be owner/repository.' >&2; exit 2; }
+[[ -z $DEPLOYMENT_REPO || $DEPLOYMENT_REPO == */* ]] || { echo 'ERROR: --deployment-repo must be owner/repository.' >&2; exit 2; }
 [[ $PREFIX != /* && $PREFIX != */ ]] || { echo 'ERROR: --prefix must not start or end with /.' >&2; exit 2; }
 command -v aws >/dev/null 2>&1 || { echo 'ERROR: AWS CLI is required.' >&2; exit 2; }
 command -v gh >/dev/null 2>&1 || { echo 'ERROR: GitHub CLI is required.' >&2; exit 2; }
@@ -155,6 +159,9 @@ gh variable set AWS_REGION --repo "$GITHUB_REPO" --env "$ENVIRONMENT" --body "$R
 gh variable set AWS_ROLE_ARN --repo "$GITHUB_REPO" --env "$ENVIRONMENT" --body "$ROLE_ARN"
 gh variable set DATA_PRODUCT_BUCKET --repo "$GITHUB_REPO" --env "$ENVIRONMENT" --body "$BUCKET"
 gh variable set DATA_PRODUCT_PREFIX --repo "$GITHUB_REPO" --env "$ENVIRONMENT" --body "$PREFIX"
+if [[ -n $DEPLOYMENT_REPO ]]; then
+    gh variable set DEPLOYMENT_REPOSITORY --repo "$GITHUB_REPO" --env "$ENVIRONMENT" --body "$DEPLOYMENT_REPO"
+fi
 
 cat <<SUMMARY
 
@@ -165,8 +172,11 @@ AWS deployment setup complete.
   Region:             $REGION
   IAM role:           $ROLE_ARN
   GitHub repository:  $GITHUB_REPO
+  Deployment repo:    ${DEPLOYMENT_REPO:-not configured}
   GitHub environment: $ENVIRONMENT
   OIDC subject:       $OIDC_SUBJECT
 
 The command is safe to rerun to reconcile this configuration.
+When a deployment repository is configured, add DEPLOYMENT_REPO_TOKEN manually as
+a fine-grained Actions secret with contents read/write access to that repository.
 SUMMARY

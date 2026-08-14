@@ -1,0 +1,79 @@
+name: Build candidates and deploy to DEV
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - data-products/**
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    environment: data-product-production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      DATA_PRODUCT_BUCKET: ${{ vars.DATA_PRODUCT_BUCKET }}
+      DATA_PRODUCT_PREFIX: ${{ vars.DATA_PRODUCT_PREFIX || 'data-products' }}
+      DEPLOYMENT_REPOSITORY: ${{ vars.DEPLOYMENT_REPOSITORY }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Validate configuration
+        shell: bash
+        run: |
+          test -n "$AWS_REGION" && test -n "$AWS_ROLE_ARN"
+          test -n "$DATA_PRODUCT_BUCKET" && test -n "$DEPLOYMENT_REPOSITORY"
+
+      - name: Build immutable candidates
+        shell: bash
+        run: bash scripts/build-changed-products.sh origin/main "$GITHUB_SHA"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: candidate-${{ github.run_id }}
+
+      - name: Publish SHA-addressed candidates
+        shell: bash
+        run: bash scripts/publish-artifacts-to-s3.sh target/data-product-artifacts "$DATA_PRODUCT_BUCKET" candidate "$DATA_PRODUCT_PREFIX" "$GITHUB_SHA"
+
+      - name: Check out deployment desired state
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.DEPLOYMENT_REPOSITORY }}
+          token: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+          path: _deployment
+
+      - name: Update DEV to exact candidates
+        shell: bash
+        run: |
+          bash scripts/write-dev-manifests.sh target/data-product-artifacts _deployment candidate \
+            "s3://$DATA_PRODUCT_BUCKET/$DATA_PRODUCT_PREFIX"
+          cd _deployment
+          git config user.name data-product-release-bot
+          git config user.email data-product-release-bot@users.noreply.github.com
+          git add environments/dev/products
+          git diff --cached --quiet && exit 0
+          git commit -m "Deploy candidates from $GITHUB_REPOSITORY@$GITHUB_SHA to DEV"
+          git pull --rebase origin main
+          git push origin HEAD:main

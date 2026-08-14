@@ -43,13 +43,16 @@ for index in "${!PRODUCTS[@]}"; do
     cp "$zip" "$ARTIFACT_DIR/"
     (cd "$ARTIFACT_DIR" && sha256sum "$product-$version.zip" > "$product-$version.zip.sha256")
     checksum=$(awk '{ print $1 }' "$ARTIFACT_DIR/$product-$version.zip.sha256")
-    cat > "$ARTIFACT_DIR/$product-$version.release.json" <<JSON
+    content_checksum=$(git ls-tree -r "$TARGET_COMMIT" -- "data-products/$product" | sha256sum | awk '{ print $1 }')
+    cat > "$ARTIFACT_DIR/$product-$version.artifact.json" <<JSON
 {
   "product": "$product",
   "version": "$version",
   "gitCommit": "$TARGET_COMMIT",
+  "gitBranch": "${GITHUB_REF_NAME:-local}",
   "file": "$product-$version.zip",
-  "sha256": "$checksum"
+  "sha256": "$checksum",
+  "contentSha256": "$content_checksum"
 }
 JSON
 done
