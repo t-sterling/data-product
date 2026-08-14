@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS orders (
+    order_id BIGINT PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL
+);
