@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+SOURCE_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 TEST_ROOT=$(mktemp -d)
 trap 'rm -rf "$TEST_ROOT"' EXIT
 mkdir -p "$TEST_ROOT/bin"
@@ -27,7 +27,7 @@ MOCK
 chmod +x "$TEST_ROOT/bin/aws" "$TEST_ROOT/bin/gh"
 
 export SETUP_MOCK_LOG="$TEST_ROOT/setup.log"
-PATH="$TEST_ROOT/bin:$PATH" "$SOURCE_ROOT/scripts/setup-aws-deployment.sh" \
+PATH="$TEST_ROOT/bin:$PATH" "$SOURCE_ROOT/infra/setup-aws-deployment.sh" \
     --bucket example-bucket \
     --region us-east-1 \
     --github-repo example/data-products >/dev/null

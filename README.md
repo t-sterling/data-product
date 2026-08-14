@@ -2,11 +2,11 @@
 
 ## Candidate-to-release GitOps lifecycle
 
-Feature-branch pushes that touch `data-products/**` build only the changed products, publish immutable candidate ZIPs under `candidates/<product>/<version>/<git-sha>/`, and update the corresponding DEV manifest in a separate `data-product-deployments` repository. That Git commit is the automatic DEV deployment trigger. A later successful feature push for the same product replaces its shared DEV desired state; no `latest` object or alias is used.
+Feature-branch pushes that touch `data-products/**` build only the changed products, publish immutable candidate ZIPs under `candidates/<product>/<version>/<git-sha>/`, and update the corresponding DEV manifest in the separate `data-product-deployment` repository. That Git commit is the automatic DEV deployment trigger. A later successful feature push for the same product replaces its shared DEV desired state; no `latest` object or alias is used.
 
 After DEV validation, the unchanged content is merged to `main`. The release workflow proves each merged product tree has the same content digest as its recorded DEV candidate, publishes it under `releases/<product>/<version>/`, and changes DEV desired state from `candidate` to `release`. Higher environments accept released artifacts only and are promoted through pull requests in the deployment repository.
 
-Configure the source repository variable `DEPLOYMENT_REPOSITORY` (for example `company/data-product-deployments`) and secret `DEPLOYMENT_REPO_TOKEN`, a fine-grained token with contents read/write access to that repository. The locally scaffolded `data-product-deployments/` directory is ignored by this repository and must be pushed as an independent repository owned by the deployment team.
+Configure the source repository variable `DEPLOYMENT_REPOSITORY` (for example `company/data-product-deployment`) and secret `DEPLOYMENT_REPO_TOKEN`, a fine-grained token with contents read/write access to that repository.
 
 This repository demonstrates independently versioned data-products in one Maven monorepo. The repository is a shared source and build container, but **each directory immediately below `data-products/` is its own release unit**. For example, the same commit can describe `orders:2.3.1` and `customers:5.1.0`.
 
@@ -53,7 +53,7 @@ Requirements are Git, Bash, JDK 17 or later, and Maven.
 ```bash
 bash ./tests/shell-tools-test.sh
 bash ./tests/publish-artifacts-test.sh
-bash ./tests/setup-aws-deployment-test.sh
+bash ./infra/tests/setup-aws-deployment-test.sh
 bash ./scripts/build-changed-products.sh origin/main HEAD
 ```
 
@@ -97,13 +97,13 @@ For every changed product, the script passes the authoritative `product.yml` ver
 The setup command configures the complete publication infrastructure using the AWS and GitHub CLIs. It is idempotent and can be reused for another account, bucket, or repository:
 
 ```bash
-./scripts/setup-aws-deployment.sh \
+./infra/setup-aws-deployment.sh \
   --bucket ts-data-products \
   --region us-east-1 \
   --github-repo t-sterling/dp-devops
 ```
 
-Authenticate first with the appropriate AWS identity and `gh auth login`. The caller needs permission to inspect the AWS account, configure the S3 bucket, manage the GitHub OIDC IAM provider and role, and administer the target GitHub repository environment. Run `./scripts/setup-aws-deployment.sh --help` for optional role, prefix, environment, and AWS profile arguments.
+Authenticate first with the appropriate AWS identity and `gh auth login`. The caller needs permission to inspect the AWS account, configure the S3 bucket, manage the GitHub OIDC IAM provider and role, and administer the target GitHub repository environment. Run `./infra/setup-aws-deployment.sh --help` for optional role, prefix, environment, and AWS profile arguments.
 
 The command:
 

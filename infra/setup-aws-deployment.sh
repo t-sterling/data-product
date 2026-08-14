@@ -6,7 +6,7 @@ usage() {
 Configure AWS and GitHub for immutable data-product publication.
 
 Usage:
-  ./scripts/setup-aws-deployment.sh \
+  ./infra/setup-aws-deployment.sh \
     --bucket <bucket-name> \
     --region <aws-region> \
     --github-repo <owner/repository> \
