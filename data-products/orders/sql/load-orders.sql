@@ -1,2 +1,2 @@
 -- Prototype deployment SQL for the orders data-product.
-SELECT 2;
+SELECT 3;

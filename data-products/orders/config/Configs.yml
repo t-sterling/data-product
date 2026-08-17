@@ -1,0 +1,24 @@
+mdpVersion: jefferies.mdp/v1
+kind: ConfigSet
+metadata:
+  name: company-schema
+spec:
+  configs:
+    - name: company-transformer
+      config: |
+        {
+          "database": {
+            "host": "mysql-service",
+            "port": 3306,
+            "settings": {
+              "maxConnections": 100,
+              "timeoutSeconds": 30
+            }
+          },
+          "features": {
+            "enableLogging": true,
+            "betaFeatures": ["ui-v2", "fast-search"]
+          }
+        }
+    - name: company-entity-resolution
+      ref: ./CompanyEntityResolution.json
