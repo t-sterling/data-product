@@ -1,0 +1,6 @@
+mdpVersion: jefferies.mdp/v1
+kind: MadisonSchema
+metadata:
+  name: company-schema
+spec:
+  classpathRef: com.madison.data.platform.Company

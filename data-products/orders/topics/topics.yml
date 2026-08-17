@@ -1,0 +1,12 @@
+mdpVersion: jefferies.mdp/v1
+kind: TopicSet
+metadata:
+  name: company-topics
+spec:
+  topics:
+    - name: T-RAW-COMPANY
+      replicas: 2
+      partitions: 3
+    - name: T-TRANSFORMED-COMPANY
+      replicas: 2
+      partitions: 3
